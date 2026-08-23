@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FareRulesDialog } from "./FareRulesDialog";
+import Image from "next/image";
 
 interface NavbarProps {
   onReset: () => void;
@@ -24,7 +25,10 @@ export function Navbar({ onReset, onExportCsv, hasData }: NavbarProps) {
   const [isRulesOpen, setIsRulesOpen] = useState<boolean>(false);
 
   React.useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark") || localStorage.getItem("theme") === "dark");
+    setIsDark(
+      document.documentElement.classList.contains("dark") ||
+        localStorage.getItem("theme") === "dark",
+    );
   }, []);
 
   const toggleTheme = () => {
@@ -46,13 +50,20 @@ export function Navbar({ onReset, onExportCsv, hasData }: NavbarProps) {
         <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           {/* Logo & Singapore Transit Pill */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/25">
-              <Train className="h-5 w-5" />
-            </div>
+            <Image
+              src="/icon.png"
+              alt="SimplyGo ROI Logo"
+              width={50}
+              height={50}
+              className="rounded-full"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-black text-stone-900 dark:text-stone-50 text-lg tracking-tight">
-                  SimplyGo <span className="text-orange-600 dark:text-orange-500">ROI</span>
+                  SimplyGo{" "}
+                  <span className="text-orange-600 dark:text-orange-500">
+                    ROI
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -60,12 +71,9 @@ export function Navbar({ onReset, onExportCsv, hasData }: NavbarProps) {
                   className="rounded-full bg-orange-100 dark:bg-orange-950/80 px-2.5 py-0.5 text-[10px] font-bold text-orange-700 dark:text-orange-300 hover:bg-orange-200 transition-colors font-mono cursor-pointer flex items-center gap-1 border border-orange-200 dark:border-orange-900"
                 >
                   <Zap className="h-2.5 w-2.5 text-orange-500" />
-                  2026 FARE MATRIX
+                  Last Updated: 2026
                 </button>
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 hidden sm:block">
-                Singapore concession pass breakeven calculator
-              </p>
             </div>
           </div>
 
@@ -109,7 +117,11 @@ export function Navbar({ onReset, onExportCsv, hasData }: NavbarProps) {
               size="icon"
               onClick={toggleTheme}
               className="h-9 w-9 rounded-xl border-stone-300 dark:border-stone-700 bg-white/70 dark:bg-stone-900/60 cursor-pointer"
-              title={isDark ? "Switch to Light (Warm Beige) Theme" : "Switch to Dark Theme"}
+              title={
+                isDark
+                  ? "Switch to Light (Warm Beige) Theme"
+                  : "Switch to Dark Theme"
+              }
             >
               {isDark ? (
                 <Sun className="h-4 w-4 text-amber-400 transition-all" />

@@ -267,8 +267,6 @@ export default function Home() {
             <span className="font-bold text-stone-800 dark:text-stone-200">
               SimplyGo Concession Pass ROI Calculator
             </span>
-            <span>•</span>
-            <span>2026 Fare Matrix</span>
           </div>
           <div className="text-stone-400">
             Source: Land Transport Authority (LTA DataMall) & SimplyGo Transit.
