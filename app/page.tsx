@@ -265,7 +265,7 @@ export default function Home() {
         <div className="container mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-mono">
             <span className="font-bold text-stone-800 dark:text-stone-200">
-              SimplyGo Concession Pass ROI Calculator
+              SimplyGo Concession Pass ROI Calculator 2026
             </span>
           </div>
           <div className="text-stone-400">
