@@ -1,26 +1,123 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Warm Beige & Orange Palette - LIGHT THEME DEFAULT */
+    --background: 38 35% 97%;       /* #FAF7F2 warm cream/beige */
+    --foreground: 24 15% 15%;       /* #2B2520 warm deep espresso */
+
+    --card: 40 40% 99%;             /* #FFFDF9 warm off-white */
+    --card-foreground: 24 15% 15%;
+
+    --popover: 40 40% 99%;
+    --popover-foreground: 24 15% 15%;
+
+    --primary: 24 95% 50%;          /* #F95A06 rich warm sunset orange */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 35 30% 92%;        /* #ECE5D8 warm soft beige */
+    --secondary-foreground: 24 20% 20%;
+
+    --muted: 36 28% 93%;            /* #EEE7DC */
+    --muted-foreground: 25 10% 45%; /* #7A726B warm stone */
+
+    --accent: 28 85% 94%;           /* #FDEBD9 warm peach tint */
+    --accent-foreground: 24 90% 35%;
+
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 35 20% 88%;           /* #E5DDD0 warm sand border */
+    --input: 35 20% 88%;
+    --ring: 24 95% 50%;
+
+    --radius: 0.875rem;
+
+    /* Transit Orange Accents */
+    --orange-primary: #f95a06;
+    --orange-hover: #ea4e00;
+    --orange-light: #fff3ea;
+    --beige-bg: #faf7f2;
+    --beige-card: #fffdf9;
+    --beige-border: #e5ddd0;
+  }
+
+  .dark {
+    --background: 24 18% 9%;        /* #1A1614 deep warm charcoal espresso */
+    --foreground: 38 30% 94%;       /* #F6F2EB warm cream */
+
+    --card: 24 16% 12%;             /* #241F1C warm dark card */
+    --card-foreground: 38 30% 94%;
+
+    --popover: 24 16% 12%;
+    --popover-foreground: 38 30% 94%;
+
+    --primary: 24 95% 54%;          /* #FB6B1D warm orange */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 24 14% 18%;        /* #332B26 */
+    --secondary-foreground: 38 30% 94%;
+
+    --muted: 24 14% 18%;
+    --muted-foreground: 30 10% 65%; /* #A8A099 */
+
+    --accent: 24 40% 18%;           /* #442E20 */
+    --accent-foreground: 24 95% 65%;
+
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 24 14% 20%;           /* #3A322C */
+    --input: 24 14% 20%;
+    --ring: 24 95% 54%;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;
+}
+
+/* Warm beige transit dot pattern */
+.bg-transit-grid {
+  background-image: radial-gradient(rgba(217, 119, 6, 0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.dark .bg-transit-grid {
+  background-image: radial-gradient(rgba(249, 115, 22, 0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Subtle orange glow animation */
+@keyframes orange-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px -3px rgba(249, 115, 22, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 25px 2px rgba(249, 115, 22, 0.4);
+  }
+}
+
+.animate-glow {
+  animation: orange-glow 4s ease-in-out infinite;
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(217, 119, 6, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(217, 119, 6, 0.45);
 }
