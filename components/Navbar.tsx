@@ -65,14 +65,6 @@ export function Navbar({ onReset, onExportCsv, hasData }: NavbarProps) {
                     ROI
                   </span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setIsRulesOpen(true)}
-                  className="rounded-full bg-orange-100 dark:bg-orange-950/80 px-2.5 py-0.5 text-[10px] font-bold text-orange-700 dark:text-orange-300 hover:bg-orange-200 transition-colors font-mono cursor-pointer flex items-center gap-1 border border-orange-200 dark:border-orange-900"
-                >
-                  <Zap className="h-2.5 w-2.5 text-orange-500" />
-                  Last Updated: 2026
-                </button>
               </div>
             </div>
           </div>
