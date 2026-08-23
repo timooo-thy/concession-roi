@@ -367,6 +367,11 @@ export function RoiSummaryCards({
                 {summary.billingPeriod}
               </div>
             )}
+            {summary.isCustomPeriod && summary.activePassRange && (
+              <div className="text-orange-700 dark:text-orange-300 font-bold flex items-center gap-1">
+                <span>Pass Validity:</span> {summary.activePassRange}
+              </div>
+            )}
           </div>
 
           <div className="text-[11px] text-stone-500 font-sans flex items-center gap-1">

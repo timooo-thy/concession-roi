@@ -1193,119 +1193,432 @@ Raffles Place - Tampines
 Total: $ 0.00`,
   },
   {
-    id: 'casual-commuter',
-    name: 'Casual / Hybrid Worker',
-    tagline: '2-3 days office + weekend social trips',
-    description: 'Hybrid worker taking 16 trips a month ($32.40). Demonstrates a heavy deficit case where pay-per-ride is vastly superior.',
-    badge: 'Deficit Case (-$89.60)',
-    badgeVariant: 'warning',
+    id: 'mid-month-commuter',
+    name: 'Mid-Month Concession (15 Jul – 14 Aug)',
+    tagline: 'Pass activated mid-month across 2 monthly statements',
+    description: 'Concession pass purchased on 15 July expiring on 14 August. Demonstrates isolating mid-month concession ROI across multiple monthly statements.',
+    badge: 'Cross-Month Pass',
+    badgeVariant: 'info',
     icon: 'coffee',
-    rawText: `PAGE 1 OF 1
+    rawText: `PAGE 1 OF 2
 STATEMENT GENERATED ON
- 02 Aug 2026
+ 01 Sep 2026
 S9567890B
  
-CHLOE LIM (HYBRID WORKER)
+CHLOE LIM (CROSS-MONTH CONCESSION)
 8000 4567 8901 2345
-July 2026 Transit Statement
- 01 Jul 2026 - 31 Jul 2026
+July & August 2026 Transit Statements
+ 01 Jul 2026 - 31 Aug 2026
 Date Journey Charges
-03 Jul 2026
-(Fri)
+02 Jul 2026
+(Thu)
 Bishan - City Hall
 09:15 AM
   Train Bishan - City Hall
  Pass Usage
-03 Jul 2026
-(Fri)
+02 Jul 2026
+(Thu)
 City Hall - Bishan
 06:30 PM
   Train City Hall - Bishan
  Pass Usage
-07 Jul 2026
-(Tue)
+08 Jul 2026
+(Wed)
 Bishan - Tanjong Pagar
-09:20 AM
+08:45 AM
   Train Bishan - Tanjong Pagar
  Pass Usage
-07 Jul 2026
+08 Jul 2026
+(Wed)
+Tanjong Pagar - Bishan
+07:00 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+15 Jul 2026
+(Wed)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+15 Jul 2026
+(Wed)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+15 Jul 2026
+(Wed)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+16 Jul 2026
+(Thu)
+Bishan - Tanjong Pagar
+08:40 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+16 Jul 2026
+(Thu)
+Tanjong Pagar - Jurong East
+01:30 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+16 Jul 2026
+(Thu)
+Jurong East - Bishan
+07:00 PM
+  Train Jurong East - Bishan
+ Pass Usage
+17 Jul 2026
+(Fri)
+Bishan - Tanjong Pagar
+08:35 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+17 Jul 2026
+(Fri)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+20 Jul 2026
+(Mon)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+20 Jul 2026
+(Mon)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+20 Jul 2026
+(Mon)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+21 Jul 2026
+(Tue)
+Bishan - Tanjong Pagar
+08:40 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+21 Jul 2026
+(Tue)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+22 Jul 2026
+(Wed)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+22 Jul 2026
+(Wed)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+22 Jul 2026
+(Wed)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+23 Jul 2026
+(Thu)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+23 Jul 2026
+(Thu)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+23 Jul 2026
+(Thu)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+24 Jul 2026
+(Fri)
+Bishan - Tanjong Pagar
+08:35 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+24 Jul 2026
+(Fri)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+27 Jul 2026
+(Mon)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+27 Jul 2026
+(Mon)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+27 Jul 2026
+(Mon)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+28 Jul 2026
+(Tue)
+Bishan - Tanjong Pagar
+08:40 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+28 Jul 2026
+(Tue)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+29 Jul 2026
+(Wed)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+29 Jul 2026
+(Wed)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+29 Jul 2026
+(Wed)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+30 Jul 2026
+(Thu)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+30 Jul 2026
+(Thu)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+30 Jul 2026
+(Thu)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+31 Jul 2026
+(Fri)
+Bishan - Tanjong Pagar
+08:35 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+31 Jul 2026
+(Fri)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+03 Aug 2026
+(Mon)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+03 Aug 2026
+(Mon)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+03 Aug 2026
+(Mon)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+04 Aug 2026
+(Tue)
+Bishan - Tanjong Pagar
+08:40 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+04 Aug 2026
+(Tue)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+05 Aug 2026
+(Wed)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+05 Aug 2026
+(Wed)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+05 Aug 2026
+(Wed)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+06 Aug 2026
+(Thu)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+06 Aug 2026
+(Thu)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+06 Aug 2026
+(Thu)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+07 Aug 2026
+(Fri)
+Bishan - Tanjong Pagar
+08:35 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+07 Aug 2026
+(Fri)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+10 Aug 2026
+(Mon)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+10 Aug 2026
+(Mon)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+10 Aug 2026
+(Mon)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+11 Aug 2026
+(Tue)
+Bishan - Tanjong Pagar
+08:40 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+11 Aug 2026
+(Tue)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+12 Aug 2026
+(Wed)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+12 Aug 2026
+(Wed)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+12 Aug 2026
+(Wed)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+13 Aug 2026
+(Thu)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+13 Aug 2026
+(Thu)
+Tanjong Pagar - Jurong East
+01:15 PM
+  Train Tanjong Pagar - Jurong East
+ Pass Usage
+13 Aug 2026
+(Thu)
+Jurong East - Bishan
+06:45 PM
+  Train Jurong East - Bishan
+ Pass Usage
+14 Aug 2026
+(Fri)
+Bishan - Tanjong Pagar
+08:35 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+14 Aug 2026
+(Fri)
+Tanjong Pagar - Bishan
+06:30 PM
+  Train Tanjong Pagar - Bishan
+ Pass Usage
+18 Aug 2026
+(Tue)
+Bishan - City Hall
+09:15 AM
+  Train Bishan - City Hall
+ Pass Usage
+18 Aug 2026
+(Tue)
+City Hall - Bishan
+06:30 PM
+  Train City Hall - Bishan
+ Pass Usage
+25 Aug 2026
+(Tue)
+Bishan - Tanjong Pagar
+08:45 AM
+  Train Bishan - Tanjong Pagar
+ Pass Usage
+25 Aug 2026
 (Tue)
 Tanjong Pagar - Bishan
 07:00 PM
   Train Tanjong Pagar - Bishan
  Pass Usage
-10 Jul 2026
-(Fri)
-Bishan - Somerset
-02:15 PM
-  Train Bishan - Somerset
- Pass Usage
-10 Jul 2026
-(Fri)
-Somerset - Bishan
-08:45 PM
-  Train Somerset - Bishan
- Pass Usage
-14 Jul 2026
-(Tue)
-Bishan - Marina Bay
-09:30 AM
-  Train Bishan - Marina Bay
- Pass Usage
-14 Jul 2026
-(Tue)
-Marina Bay - Bishan
-06:15 PM
-  Train Marina Bay - Bishan
- Pass Usage
-18 Jul 2026
-(Sat)
-Bishan - Bugis
-01:30 PM
-  Train Bishan - Bugis
- Pass Usage
-18 Jul 2026
-(Sat)
-Bugis - Bishan
-07:00 PM
-  Train Bugis - Bishan
- Pass Usage
-21 Jul 2026
-(Tue)
-Bishan - City Hall
-09:10 AM
-  Train Bishan - City Hall
- Pass Usage
-21 Jul 2026
-(Tue)
-City Hall - Bishan
-06:40 PM
-  Train City Hall - Bishan
- Pass Usage
-24 Jul 2026
-(Fri)
-Bishan - Promenade
-03:00 PM
-  Train Bishan - Promenade
- Pass Usage
-24 Jul 2026
-(Fri)
-Promenade - Bishan
-09:30 PM
-  Train Promenade - Bishan
- Pass Usage
-28 Jul 2026
-(Tue)
-Bishan - City Hall
-09:15 AM
-  Train Bishan - City Hall
- Pass Usage
-28 Jul 2026
-(Tue)
-City Hall - Bishan
-06:20 PM
-  Train City Hall - Bishan
- Pass Usage
 Total: $ 0.00`,
   },
 ];
+

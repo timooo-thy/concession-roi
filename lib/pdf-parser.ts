@@ -1,6 +1,6 @@
-import { RawTrip, CalculatedTrip, JourneyChain, StatementSummary } from '@/types';
+import { RawTrip, CalculatedTrip, JourneyChain, StatementSummary, LoadedStatementInfo } from '@/types';
 import { resolveBusDistance, resolveTrainDistance } from './distance-resolver';
-import { calculateFares } from './fare-calculator';
+import { calculateFares, parseTripTimestamp } from './fare-calculator';
 import { getDocumentProxy } from 'unpdf';
 
 export interface ParsedStatementResult {
@@ -16,6 +16,7 @@ export interface ParsedStatementResult {
   journeys: JourneyChain[];
   summary: StatementSummary;
   rawText: string;
+  loadedStatements?: LoadedStatementInfo[];
 }
 
 /**
@@ -178,7 +179,7 @@ export function parseTokens(tokens: string[]): {
 /**
  * Parses raw text from a SimplyGo Transit Statement
  */
-export function parseStatementText(text: string): ParsedStatementResult {
+export function parseStatementText(text: string, fileName?: string): ParsedStatementResult {
   const lines = text
     .split(/\r?\n/)
     .map(l => l.trim())
@@ -193,10 +194,20 @@ export function parseStatementText(text: string): ParsedStatementResult {
   summary.cardNumber = metadata.cardNumber;
   summary.billingPeriod = metadata.billingPeriod;
 
-  // If the statement had an explicit total printed (e.g. $ 90.98), verify or attach
   if (metadata.statementTotal !== undefined && summary.totalNormalFareDollars === 0) {
     summary.totalNormalFareDollars = metadata.statementTotal;
   }
+
+  const loadedStatement: LoadedStatementInfo = {
+    id: `stmt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    fileName: fileName || (metadata.billingPeriod ? `Statement (${metadata.billingPeriod})` : 'Pasted Statement'),
+    statementDate: metadata.statementDate,
+    billingPeriod: metadata.billingPeriod,
+    tripsCount: calculatedTrips.length,
+    rawText: text,
+  };
+
+  summary.loadedStatements = [loadedStatement];
 
   return {
     metadata,
@@ -204,13 +215,14 @@ export function parseStatementText(text: string): ParsedStatementResult {
     journeys,
     summary,
     rawText: text,
+    loadedStatements: [loadedStatement],
   };
 }
 
 /**
  * Extracts text from PDF buffer and parses SimplyGo statement using unpdf
  */
-export async function parseStatementPdf(pdfBuffer: ArrayBuffer): Promise<ParsedStatementResult> {
+export async function parseStatementPdf(pdfBuffer: ArrayBuffer, fileName: string = "Statement.pdf"): Promise<ParsedStatementResult> {
   const pdf = await getDocumentProxy(new Uint8Array(pdfBuffer));
   const allTokens: string[] = [];
 
@@ -223,6 +235,7 @@ export async function parseStatementPdf(pdfBuffer: ArrayBuffer): Promise<ParsedS
     }
   }
 
+  const rawText = allTokens.join('\n');
   const { metadata, rawTrips } = parseTokens(allTokens);
   const { calculatedTrips, journeys, summary } = calculateFares(rawTrips);
 
@@ -236,11 +249,161 @@ export async function parseStatementPdf(pdfBuffer: ArrayBuffer): Promise<ParsedS
     summary.totalNormalFareDollars = metadata.statementTotal;
   }
 
+  const loadedStatement: LoadedStatementInfo = {
+    id: `stmt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    fileName: fileName,
+    statementDate: metadata.statementDate,
+    billingPeriod: metadata.billingPeriod,
+    tripsCount: calculatedTrips.length,
+    rawText,
+  };
+
+  summary.loadedStatements = [loadedStatement];
+
   return {
     metadata,
     trips: calculatedTrips,
     journeys,
     summary,
-    rawText: allTokens.join('\n'),
+    rawText,
+    loadedStatements: [loadedStatement],
   };
+}
+
+/**
+ * Merges multiple parsed statement results into a unified statement result.
+ * Deduplicates identical trips, recalculates distance fares across all trips chronologically,
+ * and unions statement metadata.
+ */
+export function mergeParsedStatementResults(
+  statementList: { info: LoadedStatementInfo; result: ParsedStatementResult }[]
+): ParsedStatementResult {
+  if (statementList.length === 0) {
+    throw new Error("No statement datasets to merge");
+  }
+
+  if (statementList.length === 1) {
+    const single = statementList[0];
+    return {
+      ...single.result,
+      loadedStatements: [single.info],
+      summary: {
+        ...single.result.summary,
+        loadedStatements: [single.info],
+      },
+    };
+  }
+
+  // Combine raw text
+  const combinedRawText = statementList.map(s => s.result.rawText).join('\n--- NEXT STATEMENT ---\n');
+
+  // Collect all trips and deduplicate
+  const seenTripKeys = new Set<string>();
+  const uniqueRawTrips: (RawTrip & {
+    distanceKm: number;
+    resolvedOrigin?: string;
+    resolvedDestination?: string;
+    billedFareCents?: number;
+    hasBilledPrice?: boolean;
+  })[] = [];
+
+  for (const s of statementList) {
+    for (const trip of s.result.trips) {
+      const key = `${trip.dateStr}|${trip.timeStr}|${trip.mode}|${trip.serviceNo || ''}|${trip.origin}|${trip.destination}`;
+      if (!seenTripKeys.has(key)) {
+        seenTripKeys.add(key);
+        uniqueRawTrips.push({
+          id: `trip-${uniqueRawTrips.length + 1}`,
+          dateStr: trip.dateStr,
+          dayOfWeek: trip.dayOfWeek,
+          timeStr: trip.timeStr,
+          mode: trip.mode,
+          serviceNo: trip.serviceNo,
+          origin: trip.origin,
+          destination: trip.destination,
+          distanceKm: trip.distanceKm,
+          resolvedOrigin: trip.resolvedOrigin,
+          resolvedDestination: trip.resolvedDestination,
+          billedFareCents: trip.billedFareCents,
+          hasBilledPrice: trip.hasBilledPrice,
+          timestamp: trip.timestamp || parseTripTimestamp(trip.dateStr, trip.timeStr),
+        });
+      }
+    }
+  }
+
+  // Recalculate fares and journeys across the entire combined dataset
+  const { calculatedTrips, journeys, summary } = calculateFares(uniqueRawTrips);
+
+  // Combine metadata
+  const cardName = statementList.map(s => s.result.metadata.cardName).find(Boolean);
+  const cardNumber = statementList.map(s => s.result.metadata.cardNumber).find(Boolean);
+  const accountNumber = statementList.map(s => s.result.metadata.accountNumber).find(Boolean);
+  const statementDates = statementList.map(s => s.result.metadata.statementDate).filter(Boolean);
+  const latestStatementDate = statementDates[statementDates.length - 1];
+
+  const billingPeriods = Array.from(
+    new Set(
+      statementList
+        .map((s) => s.result.metadata.billingPeriod?.trim())
+        .filter((p): p is string => Boolean(p))
+    )
+  );
+  
+  const combinedBillingPeriod = billingPeriods.length > 0
+    ? billingPeriods.join(" & ")
+    : (summary.earliestDate && summary.latestDate ? `${summary.earliestDate} - ${summary.latestDate}` : undefined);
+
+  const loadedStatements = statementList.map(s => ({
+    ...s.info,
+    tripsCount: s.result.trips.length,
+  }));
+
+  const mergedMetadata: ParsedStatementResult['metadata'] = {
+    cardName,
+    cardNumber,
+    accountNumber,
+    statementDate: latestStatementDate,
+    billingPeriod: combinedBillingPeriod,
+  };
+
+  summary.statementDate = latestStatementDate;
+  summary.accountNumber = accountNumber;
+  summary.cardName = cardName;
+  summary.cardNumber = cardNumber;
+  summary.billingPeriod = combinedBillingPeriod;
+  summary.loadedStatements = loadedStatements;
+
+  return {
+    metadata: mergedMetadata,
+    trips: calculatedTrips,
+    journeys,
+    summary,
+    rawText: combinedRawText,
+    loadedStatements,
+  };
+}
+
+/**
+ * Parses multiple PDF statement files in parallel and merges them.
+ */
+export async function parseMultipleStatementPdfs(
+  files: { name: string; buffer: ArrayBuffer }[]
+): Promise<ParsedStatementResult> {
+  const parsedList = await Promise.all(
+    files.map(async (file) => {
+      const result = await parseStatementPdf(file.buffer, file.name);
+      const info: LoadedStatementInfo = result.loadedStatements?.[0] || {
+        id: `stmt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        fileName: file.name,
+        billingPeriod: result.metadata.billingPeriod,
+        statementDate: result.metadata.statementDate,
+        tripsCount: result.trips.length,
+        rawText: result.rawText,
+      };
+      return { info, result };
+    })
+  );
+
+  return mergeParsedStatementResults(parsedList);
 }

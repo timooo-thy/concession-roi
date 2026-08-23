@@ -34,14 +34,18 @@ interface TripListTableProps {
   trips: CalculatedTrip[];
   onUpdateTrip: (updated: CalculatedTrip) => void;
   onExportCsv: () => void;
+  activePassRange?: string;
+  totalUnfilteredTrips?: number;
 }
 
 export function TripListTable({
   trips,
   onUpdateTrip,
   onExportCsv,
+  activePassRange,
+  totalUnfilteredTrips,
 }: TripListTableProps) {
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("" );
   const [modeFilter, setModeFilter] = useState<
     "ALL" | "BUS" | "TRAIN" | "TRANSFERS" | "EARLY"
   >("ALL");
@@ -139,7 +143,7 @@ export function TripListTable({
       <CardHeader className="p-4 sm:p-6 border-b border-stone-100 dark:border-stone-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-base sm:text-lg font-black text-stone-900 dark:text-white flex items-center gap-2">
                 <span>Transit ledger</span>
                 <Badge
@@ -147,8 +151,20 @@ export function TripListTable({
                   className="text-xs font-mono px-2.5 py-0.5 bg-orange-100/70 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-900"
                 >
                   {filteredTrips.length} of {trips.length} trips
+                  {totalUnfilteredTrips && totalUnfilteredTrips !== trips.length
+                    ? ` (${totalUnfilteredTrips} in statements)`
+                    : ""}
                 </Badge>
               </CardTitle>
+
+              {activePassRange && (
+                <Badge
+                  variant="outline"
+                  className="text-xs font-mono px-2 py-0.5 border-orange-300 bg-orange-50/50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300"
+                >
+                  Pass Window: {activePassRange}
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
               Standard adult distance fares applying transfer rules and the morning pre-peak rail discount

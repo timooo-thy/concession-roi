@@ -52,7 +52,11 @@ export function ConcessionSmartCard({
 
   const cardHolderName = summary.cardName || "TRANSIT COMMUTER";
   const cardNumber = summary.cardNumber || "8000 •••• •••• 3365";
-  const billingPeriod = summary.billingPeriod || "JULY 2026";
+  const displayPeriod =
+    summary.isCustomPeriod && summary.activePassRange
+      ? summary.activePassRange.toUpperCase()
+      : (summary.billingPeriod || "JULY 2026").toUpperCase();
+
 
   return (
     <div className="relative group select-none">
@@ -166,7 +170,7 @@ export function ConcessionSmartCard({
               {cardHolderName}
             </div>
             <div className="text-[9px] text-amber-200/60 uppercase tracking-wider font-mono">
-              VALID: {billingPeriod}
+              VALID: {displayPeriod}
             </div>
           </div>
 

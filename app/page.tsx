@@ -1,18 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Navbar } from "@/components/Navbar";
 import { StatementUploader } from "@/components/StatementUploader";
 import { PassSelector } from "@/components/PassSelector";
+import { ConcessionPeriodSelector } from "@/components/ConcessionPeriodSelector";
 import { RoiSummaryCards } from "@/components/RoiSummaryCards";
 import { TripListTable } from "@/components/TripListTable";
-import { ParsedStatementResult } from "@/lib/pdf-parser";
+import {
+  ParsedStatementResult,
+  parseStatementText,
+  mergeParsedStatementResults,
+} from "@/lib/pdf-parser";
+import {
+  calculatePassPeriod,
+  filterTripsByPassPeriod,
+  getRecommendedStartDates,
+  formatDateToIso,
+  parseDateString,
+} from "@/lib/concession-period";
 import { CalculatedTrip } from "@/types";
 import { calculateFares } from "@/lib/fare-calculator";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, ShieldCheck, Zap, ArrowRightLeft } from "lucide-react";
+import { ShieldCheck, Zap, ArrowRightLeft, CalendarDays } from "lucide-react";
 
-const STORAGE_KEY = "sg_concession_roi_data_v2";
+const STORAGE_KEY = "sg_concession_roi_data_v3";
 
 export default function Home() {
   const [statementData, setStatementData] =
@@ -20,6 +32,8 @@ export default function Home() {
   const [passCost, setPassCost] = useState<number>(122.0);
   const [selectedPresetId, setSelectedPresetId] =
     useState<string>("adult-hybrid");
+  const [dateMode, setDateMode] = useState<"full" | "custom">("custom");
+  const [passStartDateIso, setPassStartDateIso] = useState<string>("");
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -32,6 +46,9 @@ export default function Home() {
         if (parsed.passCost !== undefined) setPassCost(parsed.passCost);
         if (parsed.selectedPresetId)
           setSelectedPresetId(parsed.selectedPresetId);
+        if (parsed.dateMode) setDateMode(parsed.dateMode);
+        if (parsed.passStartDateIso)
+          setPassStartDateIso(parsed.passStartDateIso);
       }
     } catch (e) {
       console.error("Error loading cached statement:", e);
@@ -49,6 +66,8 @@ export default function Home() {
             statementData,
             passCost,
             selectedPresetId,
+            dateMode,
+            passStartDateIso,
           }),
         );
       } else {
@@ -57,10 +76,97 @@ export default function Home() {
     } catch (e) {
       console.error("Error saving state:", e);
     }
-  }, [statementData, passCost, selectedPresetId, isMounted]);
+  }, [statementData, passCost, selectedPresetId, dateMode, passStartDateIso, isMounted]);
+
+  // Recommended presets based on loaded dataset
+  const recommendedPresets = useMemo(() => {
+    if (!statementData || statementData.trips.length === 0) return [];
+    return getRecommendedStartDates(statementData.trips);
+  }, [statementData]);
+
+  // Ensure passStartDateIso is initialized when new statement data arrives
+  useEffect(() => {
+    if (statementData && statementData.trips.length > 0 && !passStartDateIso) {
+      if (recommendedPresets.length > 0) {
+        // If 15th preset is available, or earliest
+        const midMonthPreset = recommendedPresets.find((p) =>
+          p.label.startsWith("15th")
+        );
+        setPassStartDateIso(
+          midMonthPreset ? midMonthPreset.isoDate : recommendedPresets[0].isoDate
+        );
+      } else {
+        const firstTripDate = parseDateString(statementData.trips[0].dateStr);
+        if (firstTripDate) {
+          setPassStartDateIso(formatDateToIso(firstTripDate));
+        }
+      }
+    }
+  }, [statementData, passStartDateIso, recommendedPresets]);
 
   const handleParsed = (result: ParsedStatementResult) => {
-    setStatementData(result);
+    // If existing statements exist and new result has statements, merge them
+    if (
+      statementData &&
+      statementData.loadedStatements &&
+      statementData.loadedStatements.length > 0 &&
+      result.loadedStatements &&
+      result.loadedStatements.length > 0
+    ) {
+      const existingStatements = statementData.loadedStatements;
+      const newStatements = result.loadedStatements;
+
+      const combinedStatements = [...existingStatements];
+      for (const ns of newStatements) {
+        if (!combinedStatements.some((es) => es.fileName === ns.fileName && es.tripsCount === ns.tripsCount)) {
+          combinedStatements.push(ns);
+        }
+      }
+
+      // Re-parse all statements into a merged result
+      const parsedItems = combinedStatements.map((info) => {
+        const parsed = parseStatementText(info.rawText || "", info.fileName);
+        return { info, result: parsed };
+      });
+
+      const merged = mergeParsedStatementResults(parsedItems);
+      setStatementData(merged);
+      
+      const newPresets = getRecommendedStartDates(merged.trips);
+      if (newPresets.length > 0) {
+        const midMonthPreset = newPresets.find((p) => p.label.startsWith("15th"));
+        setPassStartDateIso(midMonthPreset ? midMonthPreset.isoDate : newPresets[0].isoDate);
+      }
+    } else {
+      setStatementData(result);
+      const newPresets = getRecommendedStartDates(result.trips);
+      if (newPresets.length > 0) {
+        const midMonthPreset = newPresets.find((p) => p.label.startsWith("15th"));
+        setPassStartDateIso(midMonthPreset ? midMonthPreset.isoDate : newPresets[0].isoDate);
+      }
+    }
+  };
+
+  const handleRemoveStatement = (statementId: string) => {
+    if (!statementData || !statementData.loadedStatements) return;
+
+    const remaining = statementData.loadedStatements.filter(
+      (s) => s.id !== statementId
+    );
+
+    if (remaining.length === 0) {
+      setStatementData(null);
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    const parsedItems = remaining.map((info) => {
+      const parsed = parseStatementText(info.rawText || "", info.fileName);
+      return { info, result: parsed };
+    });
+
+    const merged = mergeParsedStatementResults(parsedItems);
+    setStatementData(merged);
   };
 
   const handlePassChange = (presetId: string, customPrice?: number) => {
@@ -73,7 +179,7 @@ export default function Home() {
   const handleUpdateTrip = (updatedTrip: CalculatedTrip) => {
     if (!statementData) return;
     const newTrips = statementData.trips.map((t) =>
-      t.id === updatedTrip.id ? updatedTrip : t,
+      t.id === updatedTrip.id ? updatedTrip : t
     );
     const { calculatedTrips, journeys, summary } = calculateFares(newTrips);
 
@@ -83,6 +189,7 @@ export default function Home() {
     summary.cardName = statementData.summary.cardName;
     summary.billingPeriod = statementData.summary.billingPeriod;
     summary.cardNumber = statementData.summary.cardNumber;
+    summary.loadedStatements = statementData.summary.loadedStatements;
 
     setStatementData({
       ...statementData,
@@ -93,14 +200,67 @@ export default function Home() {
   };
 
   const handleReset = () => {
-    if (confirm("Are you sure you want to clear current statement data?")) {
+    if (confirm("Are you sure you want to clear all statement data?")) {
       setStatementData(null);
       localStorage.removeItem(STORAGE_KEY);
     }
   };
 
+  // Compute calculated concession pass period
+  const calculatedPeriod = useMemo(() => {
+    const effectiveStart =
+      passStartDateIso ||
+      (statementData?.trips[0]
+        ? formatDateToIso(parseDateString(statementData.trips[0].dateStr) || new Date())
+        : formatDateToIso(new Date()));
+
+    return calculatePassPeriod(effectiveStart);
+  }, [passStartDateIso, statementData]);
+
+  // Compute active filtered dataset (Strict window isolation when custom period is selected)
+  const { activeTrips, activeSummary } = useMemo(() => {
+    if (!statementData) {
+      return { activeTrips: [], activeSummary: null };
+    }
+
+    if (dateMode === "full") {
+      const summary = {
+        ...statementData.summary,
+        isCustomPeriod: false,
+        loadedStatements: statementData.loadedStatements || statementData.summary.loadedStatements,
+      };
+      return {
+        activeTrips: statementData.trips,
+        activeSummary: summary,
+      };
+    }
+
+    // Custom Concession Pass Window Mode
+    const filtered = filterTripsByPassPeriod(
+      statementData.trips,
+      calculatedPeriod.startDate,
+      calculatedPeriod.endDate
+    );
+
+    const { summary: filteredSummary } = calculateFares(filtered);
+    filteredSummary.statementDate = statementData.summary.statementDate;
+    filteredSummary.accountNumber = statementData.summary.accountNumber;
+    filteredSummary.cardName = statementData.summary.cardName;
+    filteredSummary.cardNumber = statementData.summary.cardNumber;
+    filteredSummary.billingPeriod = statementData.summary.billingPeriod;
+    filteredSummary.isCustomPeriod = true;
+    filteredSummary.activePassRange = calculatedPeriod.formattedRange;
+    filteredSummary.loadedStatements =
+      statementData.loadedStatements || statementData.summary.loadedStatements;
+
+    return {
+      activeTrips: filtered,
+      activeSummary: filteredSummary,
+    };
+  }, [statementData, dateMode, calculatedPeriod]);
+
   const handleExportCsv = () => {
-    if (!statementData || statementData.trips.length === 0) return;
+    if (!statementData || activeTrips.length === 0) return;
 
     const headers = [
       "Index",
@@ -119,7 +279,7 @@ export default function Home() {
       "Journey_Group_ID",
     ];
 
-    const rows = statementData.trips.map((t, idx) => [
+    const rows = activeTrips.map((t, idx) => [
       idx + 1,
       `"${t.dateStr}"`,
       `"${t.timeStr}"`,
@@ -143,9 +303,14 @@ export default function Home() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    const dateLabel = statementData.metadata.billingPeriod
-      ? statementData.metadata.billingPeriod.replace(/\s+/g, "_")
-      : "statement";
+
+    const dateLabel =
+      dateMode === "custom"
+        ? `${calculatedPeriod.startDateStr.replace(/\s+/g, "_")}_to_${calculatedPeriod.endDateStr.replace(/\s+/g, "_")}`
+        : statementData.metadata.billingPeriod
+        ? statementData.metadata.billingPeriod.replace(/\s+/g, "_")
+        : "statement";
+
     link.setAttribute("download", `SimplyGo_ROI_${dateLabel}.csv`);
     document.body.appendChild(link);
     link.click();
@@ -171,22 +336,24 @@ export default function Home() {
         {/* If no statement loaded, show Uploader as hero banner */}
         {!statementData ? (
           <div className="space-y-6">
-            <StatementUploader onParsed={handleParsed} />
+            <StatementUploader
+              onParsed={handleParsed}
+              loadedStatements={[]}
+            />
 
             {/* Feature Highlights */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               <Card className="border-stone-200 dark:border-stone-800 bg-[#FFFDF9]/90 dark:bg-[#241F1C]/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-5 flex items-start gap-3.5">
                   <div className="p-2.5 bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 rounded-xl shrink-0">
-                    <Zap className="h-5 w-5" />
+                    <CalendarDays className="h-5 w-5" />
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-stone-900 dark:text-white mb-1">
-                      Distance fare calculator
+                      Mid-month concession support
                     </h4>
                     <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                      Computes LTA Distance Fares using local bus stop codes and
-                      MRT graph paths.
+                      Upload multiple monthly statements to evaluate passes starting any day of the month.
                     </p>
                   </div>
                 </CardContent>
@@ -199,11 +366,10 @@ export default function Home() {
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-stone-900 dark:text-white mb-1">
-                      Transfer rebates and early rail
+                      Distance fares & rebates
                     </h4>
                     <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                      Applies transfer rules and the morning pre-peak rail
-                      discount.
+                      Computes journey-chained fares across statement boundaries and early rail discounts.
                     </p>
                   </div>
                 </CardContent>
@@ -216,11 +382,10 @@ export default function Home() {
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-stone-900 dark:text-white mb-1">
-                      Private and local
+                      Private & browser local
                     </h4>
                     <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                      Everything runs locally in your browser. No data leaves
-                      your machine.
+                      All PDF parsing and transit calculations execute locally in your browser.
                     </p>
                   </div>
                 </CardContent>
@@ -229,33 +394,53 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-6 sm:space-y-8 animate-in fade-in-50 duration-300">
-            {/* ROI Dashboard & Gantry Breakeven Gauge */}
-            <RoiSummaryCards
-              summary={statementData.summary}
-              passCostDollars={passCost}
+            {/* Concession Period Selector / Date Mode Tab */}
+            <ConcessionPeriodSelector
+              activeMode={dateMode}
+              onModeChange={setDateMode}
+              startDateIso={passStartDateIso}
+              onStartDateChange={setPassStartDateIso}
+              calculatedPeriod={calculatedPeriod}
+              totalStatementTrips={statementData.trips.length}
+              inPeriodTripsCount={activeTrips.length}
+              recommendedPresets={recommendedPresets}
             />
 
-            {/* Collapsible Uploader for replacing statement */}
+            {/* ROI Dashboard & Gantry Breakeven Gauge */}
+            {activeSummary && (
+              <RoiSummaryCards
+                summary={activeSummary}
+                passCostDollars={passCost}
+              />
+            )}
+
+            {/* Statement Management & Additional Statement Uploader */}
             <details className="group rounded-2xl border border-stone-200 dark:border-stone-800 bg-[#FFFDF9]/90 dark:bg-[#241F1C]/90 backdrop-blur-sm p-4 sm:p-5 transition-all">
               <summary className="flex items-center justify-between cursor-pointer font-bold text-xs sm:text-sm text-stone-800 dark:text-stone-200 select-none">
                 <span className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-orange-600" />
-                  Upload another statement
+                  <CalendarDays className="h-4 w-4 text-orange-600" />
+                  Manage Statements & Upload More PDFs ({statementData.loadedStatements?.length || 1} loaded)
                 </span>
                 <span className="text-xs text-orange-600 group-open:rotate-180 transition-transform">
                   ▼
                 </span>
               </summary>
               <div className="pt-4">
-                <StatementUploader onParsed={handleParsed} />
+                <StatementUploader
+                  onParsed={handleParsed}
+                  loadedStatements={statementData.loadedStatements}
+                  onRemoveStatement={handleRemoveStatement}
+                />
               </div>
             </details>
 
-            {/* Itemised Trip Table */}
+            {/* Itemised Trip Table (Strictly showing active in-window trips) */}
             <TripListTable
-              trips={statementData.trips}
+              trips={activeTrips}
               onUpdateTrip={handleUpdateTrip}
               onExportCsv={handleExportCsv}
+              activePassRange={dateMode === "custom" ? calculatedPeriod.formattedRange : undefined}
+              totalUnfilteredTrips={statementData.trips.length}
             />
           </div>
         )}

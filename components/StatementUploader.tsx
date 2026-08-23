@@ -7,9 +7,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   parseStatementPdf,
+  parseMultipleStatementPdfs,
   parseStatementText,
+  mergeParsedStatementResults,
   ParsedStatementResult,
 } from "@/lib/pdf-parser";
+import { LoadedStatementInfo } from "@/types";
 import { SAMPLE_DATASETS, SamplePreset } from "@/lib/sample-data";
 import {
   UploadCloud,
@@ -22,48 +25,76 @@ import {
   Train,
   Coffee,
   Compass,
+  Plus,
+  Trash2,
+  FileSpreadsheet,
+  CheckCircle2,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 
 interface StatementUploaderProps {
   onParsed: (result: ParsedStatementResult) => void;
+  loadedStatements?: LoadedStatementInfo[];
+  onRemoveStatement?: (statementId: string) => void;
 }
 
-export function StatementUploader({ onParsed }: StatementUploaderProps) {
+export function StatementUploader({
+  onParsed,
+  loadedStatements = [],
+  onRemoveStatement,
+}: StatementUploaderProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingMsg, setLoadingMsg] = useState<string>("Extracting statement and calculating distance fares...");
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<boolean>(false);
   const [rawTextInput, setRawTextInput] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const processPdfFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setError("Please upload a valid SimplyGo PDF statement file (.pdf)");
+  const processPdfFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList).filter((f) =>
+      f.name.toLowerCase().endsWith(".pdf")
+    );
+
+    if (files.length === 0) {
+      setError("Please upload valid SimplyGo PDF statement files (.pdf)");
       return;
     }
+
     setError(null);
     setIsLoading(true);
+    setLoadingMsg(
+      files.length > 1
+        ? `Processing ${files.length} statements and calculating distance fares...`
+        : "Extracting statement and calculating distance fares..."
+    );
 
     try {
-      const buffer = await file.arrayBuffer();
-      const result = await parseStatementPdf(buffer);
-      if (result.trips.length === 0) {
+      const fileBuffers = await Promise.all(
+        files.map(async (file) => ({
+          name: file.name,
+          buffer: await file.arrayBuffer(),
+        }))
+      );
+
+      const newParsedResult = await parseMultipleStatementPdfs(fileBuffers);
+
+      if (newParsedResult.trips.length === 0) {
         setError(
-          "Could not detect transit trips in this PDF. Please ensure it is an official SimplyGo transit statement."
+          "Could not detect transit trips in the uploaded PDF(s). Please ensure they are official SimplyGo transit statements."
         );
       } else {
         confetti({
-          particleCount: 40,
-          spread: 60,
+          particleCount: 45,
+          spread: 65,
           origin: { y: 0.6 },
           colors: ["#f97316", "#fbbf24", "#ea580c"],
         });
-        onParsed(result);
+        onParsed(newParsedResult);
       }
     } catch (err: unknown) {
       console.error("PDF Parsing error:", err);
       setError(
-        "Failed to parse PDF statement. Please verify the PDF is not password-protected or try pasting text."
+        "Failed to parse PDF statement(s). Please verify the PDFs are not password-protected or try pasting text."
       );
     } finally {
       setIsLoading(false);
@@ -74,13 +105,13 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
     e.preventDefault();
     setDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processPdfFile(e.dataTransfer.files[0]);
+      processPdfFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      processPdfFile(e.target.files[0]);
+      processPdfFiles(e.target.files);
     }
   };
 
@@ -116,7 +147,7 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
     setError(null);
     setIsLoading(true);
     try {
-      const result = parseStatementText(preset.rawText);
+      const result = parseStatementText(preset.rawText, preset.name);
       confetti({
         particleCount: 45,
         spread: 65,
@@ -154,18 +185,18 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-md bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-[11px] font-bold font-mono uppercase tracking-wider">
-                Statement Ingestion
+                Multi-Statement Ingestion
               </span>
               <span className="text-xs text-stone-400 font-mono">•</span>
               <span className="text-xs text-stone-500 dark:text-stone-400">
-                SimplyGo Monthly PDF & Text Records
+                SimplyGo Monthly PDF & Cross-Month Records
               </span>
             </div>
             <CardTitle className="text-lg sm:text-xl font-black text-stone-900 dark:text-white tracking-tight mt-1">
-              Load Your Transit Statement
+              Load Transit Statements
             </CardTitle>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-              Upload a SimplyGo statement PDF, paste records, or pick a test preset.
+              Upload 1 or more SimplyGo statement PDFs (e.g. July & August for mid-month pass evaluation).
             </p>
           </div>
         </div>
@@ -176,6 +207,62 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
           <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-start gap-2.5 animate-in fade-in-50">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="leading-relaxed">{error}</div>
+          </div>
+        )}
+
+        {/* Uploaded Statements Chip Manager (when statements are loaded) */}
+        {loadedStatements && loadedStatements.length > 0 && (
+          <div className="p-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-[#FAF7F2]/80 dark:bg-[#1E1916]/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                  Loaded Statements ({loadedStatements.length})
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className="h-7 text-xs font-bold text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-900 hover:bg-orange-50 dark:hover:bg-orange-950/40"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add More PDFs
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {loadedStatements.map((stmt) => (
+                <div
+                  key={stmt.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 text-xs"
+                >
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <FileText className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                    <div className="min-w-0 truncate">
+                      <div className="font-bold text-stone-900 dark:text-white truncate">
+                        {stmt.fileName}
+                      </div>
+                      <div className="text-[11px] text-stone-400 font-mono">
+                        {stmt.billingPeriod || "Monthly Statement"} • {stmt.tripsCount} trips
+                      </div>
+                    </div>
+                  </div>
+
+                  {onRemoveStatement && loadedStatements.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveStatement(stmt.id)}
+                      className="p-1.5 rounded-md text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors shrink-0"
+                      title="Remove statement"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -238,7 +325,7 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
                 className="flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-stone-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:shadow-sm"
               >
                 <UploadCloud className="h-4 w-4 text-orange-500" />
-                Upload PDF
+                Upload PDF(s)
               </TabsTrigger>
               <TabsTrigger
                 value="paste"
@@ -268,6 +355,7 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   accept=".pdf,application/pdf"
                   className="hidden"
                   onChange={handleFileSelect}
@@ -277,10 +365,10 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
                     <Loader2 className="h-9 w-9 text-orange-600 animate-spin" />
                     <div className="space-y-1">
                       <p className="text-sm font-bold text-stone-800 dark:text-stone-200">
-                        Extracting statement and calculating distance fares...
+                        {loadingMsg}
                       </p>
                       <p className="text-xs text-stone-500 font-mono">
-                        Matching bus stop sequences and MRT paths
+                        Matching bus stop sequences, MRT paths, and transfer chains
                       </p>
                     </div>
                   </div>
@@ -290,10 +378,10 @@ export function StatementUploader({ onParsed }: StatementUploaderProps) {
                       <UploadCloud className="h-7 w-7" />
                     </div>
                     <p className="text-sm sm:text-base font-bold text-stone-800 dark:text-stone-200">
-                      Drop your SimplyGo PDF here
+                      Drop your SimplyGo PDF statement(s) here
                     </p>
                     <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-md">
-                      Accepts monthly e-statements from the SimplyGo app. Processed locally in your browser.
+                      Select or drop single or multiple monthly PDF statements (e.g. July & August). Processed locally in your browser.
                     </p>
                   </>
                 )}

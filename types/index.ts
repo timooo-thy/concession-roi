@@ -47,6 +47,15 @@ export interface PassTypeConfig {
   modes: ('BUS' | 'TRAIN')[];
 }
 
+export interface LoadedStatementInfo {
+  id: string;
+  fileName: string;
+  statementDate?: string;
+  billingPeriod?: string;
+  tripsCount: number;
+  rawText?: string;
+}
+
 export interface StatementSummary {
   statementDate?: string;
   accountNumber?: string;
@@ -66,4 +75,8 @@ export interface StatementSummary {
   isProfitable: boolean;
   earliestDate?: string;
   latestDate?: string;
+  isCustomPeriod?: boolean;
+  activePassRange?: string;
+  loadedStatements?: LoadedStatementInfo[];
 }
+
