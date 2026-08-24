@@ -78,5 +78,8 @@ export interface StatementSummary {
   isCustomPeriod?: boolean;
   activePassRange?: string;
   loadedStatements?: LoadedStatementInfo[];
+  statementTotal?: number;
+  statementBilledTripsTotal?: number;
 }
+
 

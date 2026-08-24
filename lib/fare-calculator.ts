@@ -212,11 +212,28 @@ function isOsi(dest: string | undefined, orig: string | undefined) {
 export function calculateFares(
   rawTrips: (RawTrip & { distanceKm: number; resolvedOrigin?: string; resolvedDestination?: string })[]
 ): { calculatedTrips: CalculatedTrip[]; journeys: JourneyChain[]; summary: StatementSummary } {
+  // 1. Compute timestamp in raw order and detect midnight rollover in the statement stream
+  const tripsWithTs = rawTrips.map((t, idx) => {
+    const ts = t.timestamp || parseTripTimestamp(t.dateStr, t.timeStr) || idx * 1000;
+    return { ...t, timestamp: ts, originalIdx: idx };
+  });
+
+  for (let i = 1; i < tripsWithTs.length; i++) {
+    const prev = tripsWithTs[i - 1];
+    const curr = tripsWithTs[i];
+    if (curr.dateStr === prev.dateStr) {
+      if (
+        prev.timeStr.toUpperCase().includes('PM') &&
+        (curr.timeStr.startsWith('12:') || curr.timeStr.startsWith('01:') || curr.timeStr.startsWith('1:') || curr.timeStr.startsWith('02:')) &&
+        curr.timeStr.toUpperCase().includes('AM')
+      ) {
+        curr.timestamp += 24 * 60 * 60 * 1000;
+      }
+    }
+  }
+
   // Sort trips chronologically
-  const sortedTrips = [...rawTrips].map((t, idx) => {
-    const timestamp = t.timestamp || parseTripTimestamp(t.dateStr, t.timeStr) || idx * 1000;
-    return { ...t, timestamp };
-  }).sort((a, b) => a.timestamp - b.timestamp);
+  const sortedTrips = [...tripsWithTs].sort((a, b) => a.timestamp - b.timestamp);
 
   const calculatedTrips: CalculatedTrip[] = [];
   const journeys: JourneyChain[] = [];
@@ -229,17 +246,21 @@ export function calculateFares(
     const raw = sortedTrips[i];
     const isExpress = raw.mode === 'BUS' && isExpressBus(raw.serviceNo);
     const isNight = raw.mode === 'BUS' && (raw.serviceNo?.toUpperCase().includes('NR') || raw.serviceNo?.toUpperCase().includes('NITE'));
-    const isExcluded = isExpress || isNight; // Simplified exclusion check
-    
     const isFeeder = raw.mode === 'BUS' && isFeederBus(raw.serviceNo);
     const isEarlyRail = isEarlyMorningRailDiscount(raw);
+    const hasMissingEntry = raw.origin?.toUpperCase().includes('MISSING');
+    const hasMissingExit = raw.destination?.toUpperCase().includes('MISSING');
+    const isMissingTap = hasMissingEntry || hasMissingExit;
+    const isPenaltyTap = isMissingTap && (!raw.hasBilledPrice || (raw.billedFareCents ?? 0) >= 200);
 
     // Standalone fare for this individual trip leg
-    let standaloneCents = isFeeder 
-      ? 128 
-      : lookupDistanceFare(raw.distanceKm, isExpress);
+    let standaloneCents = isPenaltyTap
+      ? (raw.billedFareCents || (raw.mode === 'TRAIN' ? 250 : 254))
+      : isFeeder 
+        ? 128 
+        : lookupDistanceFare(raw.distanceKm, isExpress);
     
-    if (isEarlyRail) {
+    if (isEarlyRail && standaloneCents > 0 && !isPenaltyTap) {
       standaloneCents = Math.max(0, standaloneCents - 50);
     }
 
@@ -254,29 +275,41 @@ export function calculateFares(
       const firstTs = currentJourneyTrips[0]?.timestamp ?? 0;
 
       // timeDiffMinutes uses tap-in to tap-in heuristic for PDF which lacks tap-out. 
-      // Adjusted heuristic window to <= 60 minutes as per spec.
       const timeDiffMinutes = (curTs - prevTs) / (1000 * 60);
       const totalJourneyTimeMinutes = (curTs - firstTs) / (1000 * 60);
 
+      // Mode-specific transfer window heuristic:
+      let maxAllowedTapInGap = 55;
+      if (prevTrip.mode === 'TRAIN') {
+        const estTrainMinutes = Math.min(45, Math.max(8, Math.round(prevTrip.distanceKm * 2.8 + 5)));
+        maxAllowedTapInGap = Math.min(90, estTrainMinutes + 45);
+      } else if (raw.mode === 'TRAIN') {
+        maxAllowedTapInGap = 75;
+      }
+
       const sameBusService = raw.mode === 'BUS' && prevTrip.mode === 'BUS' && raw.serviceNo === prevTrip.serviceNo;
       
-      const hasTrain = currentJourneyTrips.some(t => t.mode === 'TRAIN');
-      const isOsiTransfer = raw.mode === 'TRAIN' && prevTrip.mode === 'TRAIN' && 
+      const consecutiveTrain = raw.mode === 'TRAIN' && prevTrip.mode === 'TRAIN';
+      const isOsiTransfer = consecutiveTrain && 
                             timeDiffMinutes <= 15 && isOsi(prevTrip.resolvedDestination || prevTrip.destination, raw.resolvedOrigin || raw.origin);
       
-      const trainDisqualification = raw.mode === 'TRAIN' && hasTrain && !isOsiTransfer;
-      const prevWasExcluded = prevTrip.mode === 'BUS' && (isExpressBus(prevTrip.serviceNo) || prevTrip.serviceNo?.toUpperCase().includes('NR'));
-
-      // If missing exit, distance might be 0 or there's a penalty fare. This might break the chain if time gap is too large, but handled by 60 min check.
+      const trainDisqualification = consecutiveTrain && !isOsiTransfer;
+      const prevWasNight = prevTrip.mode === 'BUS' && prevTrip.serviceNo?.toUpperCase().includes('NR');
+      
+      const prevHadMissingExit = prevTrip.destination?.toUpperCase().includes('MISSING');
+      const prevWasTrainMissingEntry = prevTrip.mode === 'TRAIN' && prevTrip.origin?.toUpperCase().includes('MISSING');
+      const prevDisqualified = prevHadMissingExit || prevWasTrainMissingEntry;
       
       if (timeDiffMinutes >= 0 && 
-          timeDiffMinutes <= 60 && 
+          timeDiffMinutes <= maxAllowedTapInGap && 
           totalJourneyTimeMinutes <= 120 && 
-          raw.dateStr === prevTrip.dateStr && 
           !sameBusService && 
           !trainDisqualification && 
-          !isExcluded && 
-          !prevWasExcluded) {
+          !isNight && 
+          !prevWasNight && 
+          !hasMissingEntry &&
+          !hasMissingExit &&
+          !prevDisqualified) {
         isContinuation = true;
       }
     }
@@ -287,25 +320,25 @@ export function calculateFares(
        journeyRailDiscountCents = 0;
     }
 
-    // Chained fare calculation
+    // Chained fare calculation (calculated algorithmically)
     let chainedFareCents = 0;
-    if (raw.billedFareCents !== undefined && raw.hasBilledPrice) {
-      // Use exact price extracted from PDF statement
-      chainedFareCents = raw.billedFareCents;
-    } else if (!isContinuation) {
-      // First leg of a journey
+    if (!isContinuation) {
+      // First leg of a journey (includes standalone same-station base fare $1.28)
       chainedFareCents = standaloneCents;
     } else {
       // Leg 2, 3, etc. in a transfer journey
-      // Calculate cumulative distance by rounding per leg then summing, or summing exact then rounding?
-      // Spec says sum then round or round then sum? Standard LTA usually uses sum of exact, then round to 1 dec.
+      const journeyHasExpress = isExpress || currentJourneyTrips.some(t => t.mode === 'BUS' && isExpressBus(t.serviceNo));
+      const prevPaidTotal = currentJourneyTrips.reduce((sum, t) => sum + t.chainedFareCents, 0);
       const prevCumDistance = Number(currentJourneyTrips.reduce((sum, t) => sum + t.distanceKm, 0).toFixed(1));
       const newCumDistance = Number((prevCumDistance + raw.distanceKm).toFixed(1));
 
-      // Fare cap logic (distances > 40.2km are capped). lookupDistanceFare handles it since the table stops at 40.2.
-      const prevTotalJourneyFare = lookupDistanceFare(prevCumDistance, false); // Journey fare is basic, excluded handled separately
-      const newTotalJourneyFare = lookupDistanceFare(newCumDistance, false);
-      const marginalFare = Math.max(0, newTotalJourneyFare - prevTotalJourneyFare);
+      // Fare cap logic (distances > 40.2km are capped)
+      const prevTotalJourneyFare = lookupDistanceFare(prevCumDistance, journeyHasExpress);
+      const newTotalJourneyFare = lookupDistanceFare(newCumDistance, journeyHasExpress);
+      
+      const marginalFare = prevPaidTotal >= 200 
+        ? Math.max(0, newTotalJourneyFare - prevPaidTotal)
+        : Math.max(0, newTotalJourneyFare - prevTotalJourneyFare);
 
       chainedFareCents = marginalFare;
       
@@ -360,6 +393,11 @@ export function calculateFares(
   const earliestDate = dates[0] || undefined;
   const latestDate = dates[dates.length - 1] || undefined;
 
+  const billedTrips = calculatedTrips.filter(t => t.hasBilledPrice && t.billedFareCents !== undefined);
+  const statementBilledTripsTotal = billedTrips.length > 0
+    ? Number((billedTrips.reduce((sum, t) => sum + (t.billedFareCents || 0), 0) / 100).toFixed(2))
+    : undefined;
+
   const summary: StatementSummary = {
     totalTrips: calculatedTrips.length,
     totalBusTrips,
@@ -374,6 +412,7 @@ export function calculateFares(
     isProfitable: netSavingsDollars >= 0,
     earliestDate,
     latestDate,
+    statementBilledTripsTotal,
   };
 
   return {

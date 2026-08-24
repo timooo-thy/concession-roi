@@ -193,10 +193,7 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
   summary.cardName = metadata.cardName;
   summary.cardNumber = metadata.cardNumber;
   summary.billingPeriod = metadata.billingPeriod;
-
-  if (metadata.statementTotal !== undefined && summary.totalNormalFareDollars === 0) {
-    summary.totalNormalFareDollars = metadata.statementTotal;
-  }
+  summary.statementTotal = metadata.statementTotal;
 
   const loadedStatement: LoadedStatementInfo = {
     id: `stmt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -244,10 +241,7 @@ export async function parseStatementPdf(pdfBuffer: ArrayBuffer, fileName: string
   summary.cardName = metadata.cardName;
   summary.cardNumber = metadata.cardNumber;
   summary.billingPeriod = metadata.billingPeriod;
-
-  if (metadata.statementTotal !== undefined && summary.totalNormalFareDollars === 0) {
-    summary.totalNormalFareDollars = metadata.statementTotal;
-  }
+  summary.statementTotal = metadata.statementTotal;
 
   const loadedStatement: LoadedStatementInfo = {
     id: `stmt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -342,6 +336,13 @@ export function mergeParsedStatementResults(
   const statementDates = statementList.map(s => s.result.metadata.statementDate).filter(Boolean);
   const latestStatementDate = statementDates[statementDates.length - 1];
 
+  const statementTotals = statementList
+    .map(s => s.result.metadata.statementTotal)
+    .filter((t): t is number => t !== undefined);
+  const combinedStatementTotal = statementTotals.length > 0
+    ? Number(statementTotals.reduce((a, b) => a + b, 0).toFixed(2))
+    : undefined;
+
   const billingPeriods = Array.from(
     new Set(
       statementList
@@ -365,6 +366,7 @@ export function mergeParsedStatementResults(
     accountNumber,
     statementDate: latestStatementDate,
     billingPeriod: combinedBillingPeriod,
+    statementTotal: combinedStatementTotal,
   };
 
   summary.statementDate = latestStatementDate;
@@ -372,6 +374,7 @@ export function mergeParsedStatementResults(
   summary.cardName = cardName;
   summary.cardNumber = cardNumber;
   summary.billingPeriod = combinedBillingPeriod;
+  summary.statementTotal = combinedStatementTotal;
   summary.loadedStatements = loadedStatements;
 
   return {
