@@ -30,6 +30,7 @@ Use this skill whenever the user provides one or more SimplyGo PDF statement fil
 ### Step 1: Copy PDF File(s) to Fixtures
 
 When given one or more PDF file paths (or wildcard paths):
+
 1. Copy the PDF file(s) into `tests/fixtures/statements/`:
    ```bash
    cp "<provided-file-path>" tests/fixtures/statements/
@@ -41,11 +42,13 @@ When given one or more PDF file paths (or wildcard paths):
 ### Step 2: Run Forensic Discrepancy Analysis
 
 Execute the automated statement analyzer script:
+
 ```bash
-bun run .agents/skills/ingest-statement/scripts/analyze-statement.ts "tests/fixtures/statements/<statement-filename>.pdf"
+bun run .agents/skills/ingest-statement/scripts/analyze-statement.js "tests/fixtures/statements/<statement-filename>.pdf"
 ```
 
 The script will report:
+
 - Total trips evaluated
 - Billed statement total vs Algorithm calculated total
 - Initial accuracy percentage
@@ -58,14 +61,17 @@ The script will report:
 Identify the root cause of each variance and apply the appropriate domain-level fix:
 
 #### Category A: Bus Stop Name Resolution
+
 - **Symptom**: Bus leg distance is 0 km or defaults to 1.5 km because the stop name in SimplyGo differs from the LTA bus stop database (e.g. `Lot 1/Choa Chu Kang Stn`, `Opp Blk 765`, interchange boarding/alighting bays).
 - **Fix**: Update [`lib/distance-resolver.ts`](file:///Users/timooothy/Desktop/concession-roi/lib/distance-resolver.ts) or add stop name mappings/aliases in [`public/data/transit-data.json`](file:///Users/timooothy/Desktop/concession-roi/public/data/transit-data.json).
 
 #### Category B: MRT Station Pair Distance Calibration
+
 - **Symptom**: MRT trip fare is off by $\pm \$0.04$ or $\pm \$0.08$ because the calculated shortest-path network distance crosses a fare stage boundary (e.g. 12.3 km vs 12.0 km).
 - **Fix**: Update `mrtDistances` in [`public/data/transit-data.json`](file:///Users/timooothy/Desktop/concession-roi/public/data/transit-data.json) with calibrated distance for the station pair `STATION_A__STATION_B` (and reciprocal `STATION_B__STATION_A`).
 
 #### Category C: Transfer Window & Mode Timing Heuristics
+
 - **Symptom**: Valid transfers were marked as new journeys or expired transfers were chained.
 - **Rules in [`lib/fare-calculator.ts`](file:///Users/timooothy/Desktop/concession-roi/lib/fare-calculator.ts)**:
   - Bus to Bus: $\le 55\text{ min}$ tap-in to tap-in gap.
@@ -77,6 +83,7 @@ Identify the root cause of each variance and apply the appropriate domain-level 
   - Total journey time $\le 120\text{ min}$, max 6 legs (5 transfers).
 
 #### Category D: Special Fare Progression Rules
+
 - **Express Bus Legs**: Express buses participate in distance fare transfers using `EXPRESS_FARE_TABLE`.
 - **Early Morning Rail Discount**: 50¢ rebate for MRT tap-in before 7:45 AM on weekdays (excluding public holidays).
 - **Missing Tap Penalty**: `(MISSING ENTRY)` or `(MISSING EXIT)` trips are charged flat penalties ($2.50 MRT / $2.54 Bus). If a bus has a missing entry but a recorded exit tap, subsequent transfers into MRT/bus within 45 min remain valid with marginal fare deducted from the paid penalty.
@@ -87,6 +94,7 @@ Identify the root cause of each variance and apply the appropriate domain-level 
 ### Step 4: Register Statement in Regression Suite
 
 Edit [`tests/regression.test.ts`](file:///Users/timooothy/Desktop/concession-roi/tests/regression.test.ts) to add the new statement to `BENCHMARKS`:
+
 ```typescript
 {
   filename: "<statement-filename>.pdf",
@@ -105,7 +113,7 @@ Edit [`tests/regression.test.ts`](file:///Users/timooothy/Desktop/concession-roi
    bun test
    ```
 2. If any statement benchmark achieves $< 99.5\%$ accuracy:
-   - Run `bun run .agents/skills/ingest-statement/scripts/analyze-statement.ts "tests/fixtures/statements/<failing-file>.pdf"`
+   - Run `bun run .agents/skills/ingest-statement/scripts/analyze-statement.js "tests/fixtures/statements/<failing-file>.pdf"`
    - Pinpoint the exact journey discrepancies.
    - Adjust transit distances or general calculation rules.
    - Re-run `bun test`.
