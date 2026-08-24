@@ -16,6 +16,7 @@ import {
   calculatePassPeriod,
   filterTripsByPassPeriod,
   getRecommendedStartDates,
+  getUniqueMonths,
   formatDateToIso,
   parseDateString,
 } from "@/lib/concession-period";
@@ -32,7 +33,7 @@ export default function Home() {
   const [passCost, setPassCost] = useState<number>(122.0);
   const [selectedPresetId, setSelectedPresetId] =
     useState<string>("adult-hybrid");
-  const [dateMode, setDateMode] = useState<"full" | "custom">("custom");
+  const [dateMode, setDateMode] = useState<"full" | "custom">("full");
   const [passStartDateIso, setPassStartDateIso] = useState<string>("");
   const [isMounted, setIsMounted] = useState(false);
 
@@ -88,13 +89,7 @@ export default function Home() {
   useEffect(() => {
     if (statementData && statementData.trips.length > 0 && !passStartDateIso) {
       if (recommendedPresets.length > 0) {
-        // If 15th preset is available, or earliest
-        const midMonthPreset = recommendedPresets.find((p) =>
-          p.label.startsWith("15th")
-        );
-        setPassStartDateIso(
-          midMonthPreset ? midMonthPreset.isoDate : recommendedPresets[0].isoDate
-        );
+        setPassStartDateIso(recommendedPresets[0].isoDate);
       } else {
         const firstTripDate = parseDateString(statementData.trips[0].dateStr);
         if (firstTripDate) {
@@ -132,17 +127,21 @@ export default function Home() {
       const merged = mergeParsedStatementResults(parsedItems);
       setStatementData(merged);
       
+      const uniqueMonths = getUniqueMonths(merged.trips);
+      setDateMode(uniqueMonths.length <= 1 ? "full" : "custom");
+
       const newPresets = getRecommendedStartDates(merged.trips);
       if (newPresets.length > 0) {
-        const midMonthPreset = newPresets.find((p) => p.label.startsWith("15th"));
-        setPassStartDateIso(midMonthPreset ? midMonthPreset.isoDate : newPresets[0].isoDate);
+        setPassStartDateIso(newPresets[0].isoDate);
       }
     } else {
       setStatementData(result);
+      const uniqueMonths = getUniqueMonths(result.trips);
+      setDateMode(uniqueMonths.length <= 1 ? "full" : "custom");
+
       const newPresets = getRecommendedStartDates(result.trips);
       if (newPresets.length > 0) {
-        const midMonthPreset = newPresets.find((p) => p.label.startsWith("15th"));
-        setPassStartDateIso(midMonthPreset ? midMonthPreset.isoDate : newPresets[0].isoDate);
+        setPassStartDateIso(newPresets[0].isoDate);
       }
     }
   };
@@ -167,6 +166,8 @@ export default function Home() {
 
     const merged = mergeParsedStatementResults(parsedItems);
     setStatementData(merged);
+    const uniqueMonths = getUniqueMonths(merged.trips);
+    setDateMode(uniqueMonths.length <= 1 ? "full" : "custom");
   };
 
   const handlePassChange = (presetId: string, customPrice?: number) => {

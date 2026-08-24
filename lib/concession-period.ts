@@ -271,3 +271,21 @@ export function getRecommendedStartDates(
 
   return presets;
 }
+
+/**
+ * Returns the list of unique year-month keys (e.g. ["2026-6"]) present in the trips dataset.
+ */
+export function getUniqueMonths(
+  trips: (RawTrip | CalculatedTrip)[]
+): string[] {
+  if (!trips || trips.length === 0) return [];
+  const seenMonths = new Set<string>();
+  for (const t of trips) {
+    const d = parseDateString(t.dateStr);
+    if (d) {
+      seenMonths.add(`${d.getFullYear()}-${d.getMonth()}`);
+    }
+  }
+  return Array.from(seenMonths);
+}
+
