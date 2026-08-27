@@ -283,8 +283,9 @@ export function calculateFares(
       if (prevTrip.mode === 'TRAIN') {
         const estTrainMinutes = Math.min(45, Math.max(8, Math.round(prevTrip.distanceKm * 2.8 + 5)));
         maxAllowedTapInGap = Math.min(90, estTrainMinutes + 45);
-      } else if (raw.mode === 'TRAIN') {
-        maxAllowedTapInGap = 75;
+      } else if (prevTrip.mode === 'BUS') {
+        const estBusMinutes = Math.min(45, Math.max(4, Math.round(prevTrip.distanceKm * 3.2 + 4)));
+        maxAllowedTapInGap = Math.min(raw.mode === 'TRAIN' ? 85 : 75, estBusMinutes + 45);
       }
 
       const sameBusService = raw.mode === 'BUS' && prevTrip.mode === 'BUS' && raw.serviceNo === prevTrip.serviceNo;

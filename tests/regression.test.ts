@@ -59,6 +59,12 @@ const BENCHMARKS: StatementBenchmark[] = [
     expectedStatementTotal: 119.07,
     minAccuracyPercent: 99.5,
   },
+  {
+    filename: "SimplyGo Statement Jun 2026 5816.pdf",
+    expectedMinTrips: 2,
+    expectedStatementTotal: 3.80,
+    minAccuracyPercent: 99.5,
+  },
 ];
 
 describe("Fare Calculation Algorithm - Statement Regression Test Suite", () => {
